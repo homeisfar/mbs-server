@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <sys/uio.h>
 
+void error_check(ssize_t returncode, char *funcname);
 
 /* "When compiling, I will need to use -lsocket and -lnsl */
 

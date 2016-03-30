@@ -1,5 +1,6 @@
 # Server makefile
-FILES = server.c
+FILES = server.c \
+				util.c
 
 CC = gcc -Wall -g
 TARGET = mbs-server
@@ -11,4 +12,4 @@ clean:
 	rm *.o $(TARGET)
 
 # Missing:
-# LIBS = -lssl
+# LIBS = -lssl. Worry about this when I reach SSL
