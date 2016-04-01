@@ -31,5 +31,7 @@
 # Debug files
 *.dSYM/
 
+mbs-server
+
 # rip asepsis
 .DS_Store
