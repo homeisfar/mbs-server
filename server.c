@@ -1,3 +1,7 @@
+/**************************************
+Written by Ali Homafar
+Copyright © 2016 Ali Homafar
+***************************************/
 #include "util.h"
 
 #define BUFSIZE 2048
@@ -11,6 +15,10 @@ int main ()
   char buf[BUFSIZE], response[BUFSIZE];
   struct sockaddr_in srv, cli;
 
+  #ifdef DEBUG
+    printf("Setting up server...\n");
+  #endif
+
   fd = socket(AF_INET, SOCK_STREAM, 0);
   error_check(fd, "socket()");
 
@@ -18,7 +26,6 @@ int main ()
   srv.sin_port = htons(8000); // TODO: hardcode removal
   srv.sin_addr.s_addr = htonl(INADDR_ANY);
 
-  // There is almost a logic flaw with reusing rc, but if it's ever -1 then we exit anyway.
   rc = bind(fd, (struct sockaddr*) &srv, sizeof(srv));
   error_check(rc, "bind()");
 
@@ -42,6 +49,20 @@ int main ()
     {
       newfd[next] = accept(fd, (struct sockaddr*) &cli, &cli_len);
       // TODO: need a much better algorithm for termining maxfd. ha!
+
+      //////////////////print host name////////////////
+      #ifdef DEBUG
+      struct hostent *host;
+      rc = getpeername(newfd[next], (struct sockaddr *) &cli, &cli_len);
+        error_check(rc, "getpeername()");
+
+        if ((host = gethostbyaddr((char *) &cli.sin_addr, //TODO: change this to getnameinfo as recommended by the man page.
+        sizeof (cli.sin_addr), AF_INET)) == NULL)
+          perror("gethostbyaddr");
+        else
+          printf("Accepted new client: '%s'\n", host->h_name);
+      #endif
+      /////////////////////////////////////////////////
       maxfd = max(maxfd, newfd[next]);
       ++next;
     }
@@ -50,15 +71,24 @@ int main ()
     for(int i = 0; i < next; i++)
       if (FD_ISSET(newfd[i], &readfds))
       {
+        #ifdef DEBUG
+          printf("Servicing fd #%d at index %d.\n", newfd[i], i);
+        #endif
         // TODO: put the input and output in sub-while loops.
+        // TODO: do not allow user input to crash my server! ^C
         nbytes = read (newfd[i], buf, BUFSIZE);
         error_check(nbytes, "read()");
+        #ifdef DEBUG
+          printf("Reading to client.\n");
+        #endif
         nbytes2 = write (newfd[i], "bootycall\n", 10);
         error_check(nbytes2, "write()");
+        #ifdef DEBUG
+          printf("Responding to client.\n");
+        #endif
       }
   }
 
-  //ERROR CHECKING MISSING. READ NEEDS TO BE IN WHILE LOOP. WRITE NEEDS TO BE IN LOOP.
   //CRLF IS THE DELIMITER. WHAT 2 DO IF WE GET NON-DELIMITED DATA?
 
 /*
