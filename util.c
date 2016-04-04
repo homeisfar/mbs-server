@@ -14,3 +14,9 @@ void error_check(ssize_t returncode, char *funcname)
     exit(1);
   }
 }
+
+void usage()
+{
+  fprintf(stderr, "Invocation: ./mbs-server -p <port> -s <sslport> -r </path/to/serve/dir\n");
+  fprintf(stderr, "./mbs-server alone will give 8000, 8001, and ./www, respectively\n");
+}

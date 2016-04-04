@@ -1,0 +1,8 @@
+/* initialization routine */
+
+
+
+int init()
+{
+
+}

@@ -14,9 +14,13 @@
 #include <unistd.h>
 #include <sys/uio.h>
 
+#include "global.h"
+#include "client.h"
+
 #define max(a,b) ((a>b)?a:b)
 
 void error_check(ssize_t returncode, char *funcname);
+void usage();
 
 /* "When compiling, I will need to use -lsocket and -lnsl */
 

@@ -1,12 +1,14 @@
 /**************************************
-Written by Ali Homafar
+Main function inside.
 Copyright © 2016 Ali Homafar
 ***************************************/
 #include "util.h"
 
-#define BUFSIZE 2048
+int port = 8000;
+int sslport = 8001;
+char rootdir[] = "./www";
 
-int main ()
+int main (int argc, char *argv[])
 {
   int fd, maxfd, next = 0; //fd for listening. newfd for read/write to client. Next for select.
   ssize_t nbytes, nbytes2, rc = 0;
@@ -19,18 +21,51 @@ int main ()
     printf("Setting up server...\n");
   #endif
 
+  /* Retrieve command line args */
+  int ch;
+  while ((ch = getopt(argc, argv, "p:s:r:")) != -1) {
+    switch (ch) {
+      case 'p':
+        port = atoi(optarg);
+      break;
+      case 's':
+        sslport = atoi(optarg);
+      break;
+      case 'r':
+        strncpy(rootdir,optarg,sizeof(rootdir)-1);
+        rootdir[sizeof(rootdir)-1] = '\0';
+      break;
+      case '?':
+        fprintf(stderr, "Invalid invocation.\n");
+      default:
+        usage();
+        exit(1);
+      }
+    }
+  argc -= optind;
+  argv += optind;
+
+
   fd = socket(AF_INET, SOCK_STREAM, 0);
   error_check(fd, "socket()");
 
   srv.sin_family = AF_INET;
-  srv.sin_port = htons(8000); // TODO: hardcode removal
+  srv.sin_port = htons(port);
   srv.sin_addr.s_addr = htonl(INADDR_ANY);
+
+  #ifdef DEBUG
+    printf("port: %d\n", port);
+    printf("sslport: %d\n", sslport);
+    printf("servedir: %s\n", rootdir);
+  #endif
 
   rc = bind(fd, (struct sockaddr*) &srv, sizeof(srv));
   error_check(rc, "bind()");
 
   // Fun fact: the other end can start sending data after listen() and before accept().
   // Three way handshake is done after listen().
+  // listen does need to be in a loop or anything like that for further incoming requests
+  // because the OS is handling it for us now.
   rc = listen(fd, 5);
   error_check(rc, "listen()");
 
@@ -62,7 +97,7 @@ int main ()
         else
           printf("Accepted new client: '%s'\n", host->h_name);
       #endif
-      /////////////////////////////////////////////////
+      ////////////////end print host name/////////////
       maxfd = max(maxfd, newfd[next]);
       ++next;
     }
@@ -75,11 +110,19 @@ int main ()
           printf("Servicing fd #%d at index %d.\n", newfd[i], i);
         #endif
         // TODO: put the input and output in sub-while loops.
-        // TODO: do not allow user input to crash my server! ^C
+        // TODO: do not allow users closing connections to shutdown the server!
+        // TODO: change read/write to recv/send.
         nbytes = read (newfd[i], buf, BUFSIZE);
-        error_check(nbytes, "read()");
+        if (errno == ECONNRESET)
+        {
+          rc = shutdown(newfd[i], SHUT_RDWR);
+          printf("Closing fd %d\n", newfd[i]);
+          next--;
+          error_check (rc, "newfd close()");
+        }
+        else error_check(nbytes, "read()");
         #ifdef DEBUG
-          printf("Reading to client.\n");
+          printf("Reading from client.\n");
         #endif
         nbytes2 = write (newfd[i], "bootycall\n", 10);
         error_check(nbytes2, "write()");
@@ -88,8 +131,6 @@ int main ()
         #endif
       }
   }
-
-  //CRLF IS THE DELIMITER. WHAT 2 DO IF WE GET NON-DELIMITED DATA?
 
 /*
   // Accept is blocking. Listen is not.
