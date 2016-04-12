@@ -1,5 +1,6 @@
 # Server makefile
 FILES = server.c \
+				client.c \
 				util.c
 
 CC = gcc -Wall

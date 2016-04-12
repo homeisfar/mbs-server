@@ -82,8 +82,9 @@ int main (int argc, char *argv[])
     error_check(rc, "select()");
     if (FD_ISSET(fd, &readfds))
     {
+      //TODO: wrap accept so that the struct is created to keep track of all our clients.
       newfd[next] = accept(fd, (struct sockaddr*) &cli, &cli_len);
-      // TODO: need a much better algorithm for termining maxfd. ha!
+      // TODO: need a much better algorithm for determining maxfd. ha!
 
       //////////////////print host name////////////////
       #ifdef DEBUG
@@ -115,20 +116,29 @@ int main (int argc, char *argv[])
         nbytes = read (newfd[i], buf, BUFSIZE);
         if (errno == ECONNRESET)
         {
-          rc = shutdown(newfd[i], SHUT_RDWR);
+          rc = close(newfd[i]);
           printf("Closing fd %d\n", newfd[i]);
           next--;
           error_check (rc, "newfd close()");
         }
-        else error_check(nbytes, "read()");
-        #ifdef DEBUG
-          printf("Reading from client.\n");
-        #endif
-        nbytes2 = write (newfd[i], "bootycall\n", 10);
-        error_check(nbytes2, "write()");
-        #ifdef DEBUG
-          printf("Responding to client.\n");
-        #endif
+        else
+        {
+          error_check(nbytes, "read()");
+          #ifdef DEBUG
+            printf("Reading from client.\n");
+          #endif
+        }
+        // Shouldn't do writing here when selecting. but for testing purposes... hrrhrr
+        if (errno != ECONNRESET)
+        {
+          nbytes2 = write (newfd[i], "bootycall\n", 10);
+          error_check(nbytes2, "write()");
+          #ifdef DEBUG
+            printf("Responding to client.\n");
+          #endif
+        }
+
+
       }
   }
 
@@ -151,8 +161,8 @@ int main (int argc, char *argv[])
 */
 
   /* TODO: Obviously i can't just close file descriptors like this now that select() is in */
-  rc = close(fd);
-  error_check(rc, "fd close()");
-  close(newfd);
-  error_check(rc, "newfd close()");
+  // rc = close(fd);
+  // error_check(rc, "fd close()");
+  // close(newfd);
+  // error_check(rc, "newfd close()");
 }
