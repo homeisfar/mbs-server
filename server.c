@@ -9,13 +9,10 @@ int sslport = 8001;
 char rootdir[] = "./www";
 struct client_node *cli_list = NULL;
 
+void initialize_server();
+
 int main (int argc, char *argv[])
 {
-  int fd, maxfd = 0; //fd for listening. newfd for read/write to client. Next for select.
-  ssize_t nbytes, nbytes2, rc = 0;
-  char buf[BUFSIZE], response[BUFSIZE];
-  struct sockaddr_in srv;
-
   #ifdef DEBUG
     printf("Setting up server...\n");
   #endif
@@ -44,6 +41,15 @@ int main (int argc, char *argv[])
   argc -= optind;
   argv += optind;
 
+initialize_server();
+}
+
+void initialize_server()
+{
+  int fd, maxfd = 0; //fd for listening. newfd for read/write to client. Next for select.
+  ssize_t nbytes, nbytes2, rc = 0;
+  char buf[BUFSIZE], response[BUFSIZE];
+  struct sockaddr_in srv;
 
   fd = socket(AF_INET, SOCK_STREAM, 0);
   error_check(fd, "socket()");
@@ -79,7 +85,6 @@ int main (int argc, char *argv[])
     rc = select (maxfd+1, &readfds, 0, 0, 0);
     error_check(rc, "select()");
     if (FD_ISSET(fd, &readfds)){accept_new_conn(fd);}
-
     /* The following runs for every descriptor in our linked list */
     temp = cli_list;
     while(temp != NULL)
@@ -90,9 +95,10 @@ int main (int argc, char *argv[])
           printf("Servicing fd #%d.\n", temp->data.fd);
         #endif
         // TODO: put the input and output in sub-while loops.
-        // TODO: do not allow users closing connections to shutdown the server! The root of this problem is that I hardcoded a temp reply to them.
-        // TODO: change read/write to recv/send. MAYBE? CMU prof says don't.
+        // TODO: do not allow users closing connections to shutdown the server!
+        // TODO: change read/write to recv/send. MAYBE? CMU prof says just use read.
         nbytes = read (temp->data.fd, buf, BUFSIZE);
+        strcpy(response, buf);
         if (errno == ECONNRESET)
         {
           rc = close(temp->data.fd);
@@ -109,8 +115,10 @@ int main (int argc, char *argv[])
         // Shouldn't do writing here when selecting. but for testing purposes... hrrhrr
         if (errno != ECONNRESET)
         {
-          nbytes2 = write (temp->data.fd, "bootycall\n", 10);
+          nbytes2 = write(temp->data.fd, response, strlen(response));
           error_check(nbytes2, "write()");
+          memset(buf, 0, BUFSIZE);
+          memset(response, 0, BUFSIZE);
           #ifdef DEBUG
             printf("Responding to client.\n");
           #endif
@@ -119,28 +127,4 @@ int main (int argc, char *argv[])
     temp = temp->next;
     }
   }
-
-/*
-  // Accept is blocking. Listen is not.
-  newfd = accept(fd, (struct sockaddr*) &cli, &cli_len);
-  error_check(newfd, "accept()");
-
-   while (1)
-   {
-    nbytes = read(newfd, buf, BUFSIZE);
-    error_check(nbytes, "read()");
-    strcpy(response, buf);
-    error_check(rc, "response sprintf()");
-    nbytes2 = write(newfd, response, strlen(response));
-    error_check(nbytes2, "write()");
-    memset(buf, 0, BUFSIZE);
-    memset(response, 0, BUFSIZE);
-}
-*/
-
-  /* TODO: Obviously i can't just close file descriptors like this now that select() is in */
-  // rc = close(fd);
-  // error_check(rc, "fd close()");
-  // close(newfd);
-  // error_check(rc, "newfd close()");
 }

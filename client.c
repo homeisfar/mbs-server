@@ -20,10 +20,8 @@ struct client_node *accept_new_conn(int hostfd)
   {
     printf("A new connection failed.\n");
     return NULL;
-  }
+  } else {
   /* put client into linked list */
-  else
-  {
     /* Pass the address of the linked list, which itself is a pointer.
        Have to double dereference. */
     add_new_client(&cli_list, cli_node);
@@ -60,8 +58,8 @@ void add_new_client(struct client_node **cli_list, struct client_node *new_cli_n
     {
       temp = temp->next;
     }
+    temp->next = new_cli_node;
   }
-  temp->next = new_cli_node;
 }
 
 /* I am reasonably sure that maxfd shouldn't include the server fd */
