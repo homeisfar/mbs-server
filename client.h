@@ -19,3 +19,10 @@ struct client_node
   struct client_node *next;
   struct client_data data;
 };
+
+struct client_node *cli_list;
+
+struct client_node *accept_new_conn(int hostfd);
+void add_new_client(struct client_node **cli_list, struct client_node *new_cli_node);
+int get_maxfd(struct client_node *cli_list);
+int get_read_fdset(fd_set *readfds, int serverfd, struct client_node *cli_list);

@@ -7,15 +7,14 @@ Copyright © 2016 Ali Homafar
 int port = 8000;
 int sslport = 8001;
 char rootdir[] = "./www";
+struct client_node *cli_list = NULL;
 
 int main (int argc, char *argv[])
 {
-  int fd, maxfd, next = 0; //fd for listening. newfd for read/write to client. Next for select.
+  int fd, maxfd = 0; //fd for listening. newfd for read/write to client. Next for select.
   ssize_t nbytes, nbytes2, rc = 0;
-  int newfd[10]; //Array of accepted descriptors. Ten simultaneous connections.
-  socklen_t cli_len;
   char buf[BUFSIZE], response[BUFSIZE];
-  struct sockaddr_in srv, cli;
+  struct sockaddr_in srv;
 
   #ifdef DEBUG
     printf("Setting up server...\n");
@@ -70,55 +69,34 @@ int main (int argc, char *argv[])
   error_check(rc, "listen()");
 
   //read the client data and write back to it.
-  maxfd = fd;
+  // maxfd = fd;
+
+  fd_set readfds;
+  struct client_node *temp;
   while (1)
   {
-    fd_set readfds;
-    FD_ZERO (&readfds);
-    FD_SET (fd, &readfds);
-    for (int i = 0; i < next; i++)
-      FD_SET (newfd[i], &readfds);
+    maxfd = get_read_fdset(&readfds, fd, cli_list);
     rc = select (maxfd+1, &readfds, 0, 0, 0);
     error_check(rc, "select()");
-    if (FD_ISSET(fd, &readfds))
+    if (FD_ISSET(fd, &readfds)){accept_new_conn(fd);}
+
+    /* The following runs for every descriptor in our linked list */
+    temp = cli_list;
+    while(temp != NULL)
     {
-      //TODO: wrap accept so that the struct is created to keep track of all our clients.
-      newfd[next] = accept(fd, (struct sockaddr*) &cli, &cli_len);
-      // TODO: need a much better algorithm for determining maxfd. ha!
-
-      //////////////////print host name////////////////
-      #ifdef DEBUG
-      struct hostent *host;
-      rc = getpeername(newfd[next], (struct sockaddr *) &cli, &cli_len);
-        error_check(rc, "getpeername()");
-
-        if ((host = gethostbyaddr((char *) &cli.sin_addr, //TODO: change this to getnameinfo as recommended by the man page.
-        sizeof (cli.sin_addr), AF_INET)) == NULL)
-          perror("gethostbyaddr");
-        else
-          printf("Accepted new client: '%s'\n", host->h_name);
-      #endif
-      ////////////////end print host name/////////////
-      maxfd = max(maxfd, newfd[next]);
-      ++next;
-    }
-
-    /* The following runs for every descriptor newfd[n] */
-    for(int i = 0; i < next; i++)
-      if (FD_ISSET(newfd[i], &readfds))
+      if (FD_ISSET(temp->data.fd, &readfds))
       {
         #ifdef DEBUG
-          printf("Servicing fd #%d at index %d.\n", newfd[i], i);
+          printf("Servicing fd #%d.\n", temp->data.fd);
         #endif
         // TODO: put the input and output in sub-while loops.
-        // TODO: do not allow users closing connections to shutdown the server!
-        // TODO: change read/write to recv/send.
-        nbytes = read (newfd[i], buf, BUFSIZE);
+        // TODO: do not allow users closing connections to shutdown the server! The root of this problem is that I hardcoded a temp reply to them.
+        // TODO: change read/write to recv/send. MAYBE? CMU prof says don't.
+        nbytes = read (temp->data.fd, buf, BUFSIZE);
         if (errno == ECONNRESET)
         {
-          rc = close(newfd[i]);
-          printf("Closing fd %d\n", newfd[i]);
-          next--;
+          rc = close(temp->data.fd);
+          printf("Closing fd %d\n", temp->data.fd);
           error_check (rc, "newfd close()");
         }
         else
@@ -131,15 +109,15 @@ int main (int argc, char *argv[])
         // Shouldn't do writing here when selecting. but for testing purposes... hrrhrr
         if (errno != ECONNRESET)
         {
-          nbytes2 = write (newfd[i], "bootycall\n", 10);
+          nbytes2 = write (temp->data.fd, "bootycall\n", 10);
           error_check(nbytes2, "write()");
           #ifdef DEBUG
             printf("Responding to client.\n");
           #endif
         }
-
-
       }
+    temp = temp->next;
+    }
   }
 
 /*
