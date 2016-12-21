@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netdb.h>
-#include <strings.h>
+#include <string.h>
 #include <sys/time.h>
 #include <errno.h>
 #include <sys/stat.h>
@@ -19,8 +19,8 @@
 
 #define max(a,b) ((a>b)?a:b)
 
-void error_check(ssize_t returncode, char *funcname);
-void usage();
+extern void error_check(ssize_t returncode, char *funcname);
+extern void usage();
 
 /* "When compiling, I will need to use -lsocket and -lnsl */
 

@@ -41,7 +41,8 @@ int main (int argc, char *argv[])
   argc -= optind;
   argv += optind;
 
-initialize_server();
+  initialize_server();
+  return 0;
 }
 
 void initialize_server()
